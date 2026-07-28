@@ -1,0 +1,163 @@
+import { Product } from "@/types";
+
+export const products: Product[] = [
+  {
+    id: "royal-rose-bloom",
+    name: "Royal Rose Bloom",
+    slug: "royal-rose-bloom",
+    collection: "Floral Reverie",
+    category: "Luxury Candles",
+    tagline: "A rose garden, held in glass.",
+    price: 1899,
+    compareAtPrice: 2199,
+    rating: 4.9,
+    reviewCount: 128,
+    notes: {
+      top: ["Bulgarian Rose", "Pink Pepper"],
+      heart: ["Peony", "Lily of the Valley"],
+      base: ["Soft Musk", "White Amber"],
+    },
+    description:
+      "Petals of Bulgarian rose unfurl over a hush of peony and musk. Poured into a hand-ribbed rose jar and finished with a scattering of pearls, this is the scent of a garden at first light.",
+    burnTime: "40+ hours",
+    weight: "220g",
+    vessel: "Hand-ribbed rose glass jar",
+    image: "/images/products/royal-rose-bloom-pearl.jpg",
+    gallery: [
+      "/images/products/royal-rose-bloom-pearl.jpg",
+      "/images/products/royal-rose-bloom-flower.jpg",
+    ],
+    badge: "Bestseller",
+  },
+  {
+    id: "velvet-ylang",
+    name: "Velvet Ylang",
+    slug: "velvet-ylang",
+    collection: "Golden Warmth",
+    category: "Luxury Candles",
+    tagline: "Warm florals, wrapped in sandalwood.",
+    price: 1699,
+    rating: 4.8,
+    reviewCount: 94,
+    notes: {
+      top: ["Ylang Ylang", "Bergamot"],
+      heart: ["Sandalwood", "Jasmine Petal"],
+      base: ["Warm Amber", "Golden Vanilla"],
+    },
+    description:
+      "Ylang ylang, sun-warmed and heady, settles into sandalwood and a low glow of amber. Gilded with 24k-hued pearls and set beneath a mango-wood lid — this is candlelight as adornment.",
+    burnTime: "45+ hours",
+    weight: "210g",
+    vessel: "Blown glass jar, mango-wood lid",
+    image: "/images/products/velvet-ylang-a.jpg",
+    gallery: [
+      "/images/products/velvet-ylang-a.jpg",
+      "/images/products/velvet-ylang-b.jpg",
+    ],
+    badge: "Bestseller",
+  },
+  {
+    id: "azure-breeze",
+    name: "Azure Breeze",
+    slug: "azure-breeze",
+    collection: "Coastal Calm",
+    category: "Home Fragrance",
+    tagline: "Salt air, pressed into wax.",
+    price: 1599,
+    rating: 4.7,
+    reviewCount: 61,
+    notes: {
+      top: ["Sea Salt", "Bergamot"],
+      heart: ["Blue Lotus", "Water Lily"],
+      base: ["Driftwood", "White Musk"],
+    },
+    description:
+      "A cool wash of sea salt and blue lotus over pale driftwood — poured into a hand-painted mandala tin, dressed with dried gypsophila. Built for slow mornings and open windows.",
+    burnTime: "35+ hours",
+    weight: "180g",
+    vessel: "Hand-painted mandala tin",
+    image: "/images/products/azure-breeze.jpg",
+    gallery: ["/images/products/azure-breeze.jpg"],
+    badge: "New",
+  },
+  {
+    id: "oudwood-reserve",
+    name: "Oudwood Reserve",
+    slug: "oudwood-reserve",
+    collection: "Woods & Amber",
+    category: "Luxury Candles",
+    tagline: "Dark wood, low light, long evenings.",
+    price: 2199,
+    compareAtPrice: 2499,
+    rating: 5.0,
+    reviewCount: 76,
+    notes: {
+      top: ["Smoked Cardamom", "Saffron"],
+      heart: ["Oud", "Cedarwood"],
+      base: ["Dark Amber", "Supple Leather"],
+    },
+    description:
+      "Our most intense pour. Rare oud and cedar smoulder into dark amber and leather, held inside a frosted amber apothecary jar with a brass lid. Reserved for rooms that deserve gravity.",
+    burnTime: "50+ hours",
+    weight: "230g",
+    vessel: "Frosted amber jar, brass lid",
+    image: "/images/products/oudwood-reserve.jpg",
+    gallery: ["/images/products/oudwood-reserve.jpg"],
+    badge: "Limited Edition",
+  },
+  {
+    id: "vanilla-velvet",
+    name: "Vanilla Velvet",
+    slug: "vanilla-velvet",
+    collection: "Golden Warmth",
+    category: "Gift Sets",
+    tagline: "Whipped vanilla, slow and soft.",
+    price: 1499,
+    rating: 4.8,
+    reviewCount: 143,
+    notes: {
+      top: ["Madagascar Vanilla", "Tonka Bean"],
+      heart: ["Whipped Cream Accord", "Heliotrope"],
+      base: ["Golden Musk", "Sandalwood"],
+    },
+    description:
+      "Madagascar vanilla whipped soft with tonka bean and a hush of sandalwood. Poured into a smoked-lilac glass jar — our most-gifted candle, and for good reason.",
+    burnTime: "42+ hours",
+    weight: "200g",
+    vessel: "Smoked lilac glass jar",
+    image: "/images/products/vanilla-velvet.jpg",
+    gallery: ["/images/products/vanilla-velvet.jpg"],
+    badge: "Bestseller",
+  },
+];
+
+export const collections = [
+  {
+    name: "Floral Reverie",
+    description: "Rose, peony and petals held in wax.",
+    image: "/images/products/royal-rose-bloom-flower.jpg",
+  },
+  {
+    name: "Golden Warmth",
+    description: "Amber, vanilla and sandalwood, low and slow.",
+    image: "/images/products/velvet-ylang-a.jpg",
+  },
+  {
+    name: "Woods & Amber",
+    description: "Oud, cedar and leather for long evenings.",
+    image: "/images/products/oudwood-reserve.jpg",
+  },
+  {
+    name: "Coastal Calm",
+    description: "Sea salt, blue lotus and driftwood.",
+    image: "/images/products/azure-breeze.jpg",
+  },
+];
+
+export const categories = [
+  { name: "Luxury Candles", count: 12 },
+  { name: "Gift Sets", count: 6 },
+  { name: "Home Fragrance", count: 8 },
+  { name: "Seasonal Collection", count: 5 },
+  { name: "New Arrivals", count: 4 },
+];
