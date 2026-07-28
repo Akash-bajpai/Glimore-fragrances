@@ -15,7 +15,7 @@ export const siteConfig = {
     pin: "122103",
     country: "India",
   },
-  instagram: "https://instagram.com/glimorefragrances",
+  instagram: "https://www.instagram.com/glimoreofficial/",
   facebook: "https://facebook.com/glimorefragrances",
   pinterest: "https://pinterest.com/glimorefragrances",
   url: "https://glimorefragrances.com",
