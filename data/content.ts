@@ -16,7 +16,7 @@ export const siteConfig = {
     country: "India",
   },
   instagram: "https://www.instagram.com/glimoreofficial/",
-  url: "https://glimore-fragrances-ten.vercel.app/",
+  url: ,
 };
 
 export const navLinks: NavLink[] = [
