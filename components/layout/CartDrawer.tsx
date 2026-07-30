@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/components/providers/CartProvider";
@@ -174,7 +175,9 @@ export function CartDrawer() {
                   <span className="text-fg/60">Subtotal</span>
                   <span className="font-display text-lg">{formatINR(cartTotal)}</span>
                 </div>
-                <button className="btn-gold w-full">Proceed to Checkout</button>
+                <Link href="/checkout" onClick={closeDrawer} className="btn-gold w-full">
+                  Proceed to Checkout
+                </Link>
                 <p className="mt-3 text-center font-body text-[11px] text-fg/40">
                   Shipping and taxes calculated at checkout.
                 </p>

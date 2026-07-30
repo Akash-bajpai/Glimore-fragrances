@@ -6,17 +6,19 @@ export const siteConfig = {
   tagline: "Illuminated Living",
   description:
     "Hand-poured luxury soy candles crafted in small batches in Sohna, Gurgaon — rare fragrance oils, slow burns, and gift-ready finishing.",
-  phone: "+91 8130535057",
-  phoneDisplay: "8130535057",
-  whatsapp: "8130535057",
+  phone: "+91 98723 18718",
+  phoneDisplay: "98723 18718",
+  whatsapp: "919872318718",
   email: "hello@glimorefragrances.com",
   address: {
     line: "Sohna, Gurgaon, Haryana",
     pin: "122103",
     country: "India",
   },
-  instagram: "https://www.instagram.com/glimoreofficial/",
-  
+  instagram: "https://instagram.com/glimorefragrances",
+  facebook: "https://facebook.com/glimorefragrances",
+  pinterest: "https://pinterest.com/glimorefragrances",
+  url: "https://glimorefragrances.com",
 };
 
 export const navLinks: NavLink[] = [

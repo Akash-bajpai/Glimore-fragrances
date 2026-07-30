@@ -103,6 +103,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setWishlist((prev) =>
       prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
     );
+    // Best-effort sync to the server wishlist when signed in — silently
+    // ignored (401) for guests, so this never blocks the local UX.
+    fetch("/api/wishlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId }),
+    }).catch(() => {});
   }, []);
 
   const isWishlisted = useCallback(
