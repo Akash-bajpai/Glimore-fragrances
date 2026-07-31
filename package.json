@@ -16,7 +16,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^7.9.1",
+    "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "framer-motion": "^11.2.10",
@@ -38,7 +38,7 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.5",
     "postcss": "^8.4.38",
-    "prisma": "^7.9.1",
+    "prisma": "6.19.3",
     "tailwindcss": "^3.4.4",
     "tsx": "^4.23.1",
     "typescript": "^5.4.5"
