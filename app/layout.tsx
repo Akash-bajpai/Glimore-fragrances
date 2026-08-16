@@ -93,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="en" className={`${fraunces.variable} ${manrope.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${fraunces.variable} ${manrope.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{

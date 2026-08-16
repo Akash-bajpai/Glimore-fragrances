@@ -4,7 +4,7 @@ import { useState, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { FlameMark } from "@/components/ui/FlameMark";
 
 function LoginForm() {
@@ -14,6 +14,7 @@ function LoginForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,20 +52,31 @@ function LoginForm() {
   return (
     <div className="section-px flex min-h-[90vh] items-center justify-center py-24">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="w-full max-w-md"
       >
-        <div className="mb-8 flex flex-col items-center text-center">
-          <FlameMark className="mb-4 h-9 w-auto" />
-          <h1 className="font-display text-3xl">Welcome Back</h1>
-          <p className="mt-2 font-body text-sm text-fg/55">Sign in to continue.</p>
+        <div className="mb-10 flex flex-col items-center text-center">
+          <FlameMark className="mb-5 h-9 w-auto" />
+          <h1 className="font-display text-4xl">Welcome Back</h1>
+          <p className="mt-2 font-body text-sm text-fg/55">
+            Sign in to your Glimoré account.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6"
+          noValidate
+          aria-label="Sign in form"
+        >
+          {/* Email */}
           <div>
-            <label htmlFor="email" className="font-body text-xs uppercase tracking-widest text-fg/45">
+            <label
+              htmlFor="email"
+              className="font-body text-xs uppercase tracking-widest text-fg/45"
+            >
               Email Address
             </label>
             <input
@@ -72,38 +84,81 @@ function LoginForm() {
               name="email"
               type="email"
               required
-              className="mt-1 w-full border-b border-edge/20 bg-transparent py-3 font-body text-sm text-fg placeholder:text-fg/35 focus:border-gold focus:outline-none"
+              autoComplete="email"
+              aria-label="Email address"
+              placeholder="you@example.com"
+              className="mt-2 w-full border-b border-edge/20 bg-transparent pb-3 pt-1 font-body text-sm text-fg placeholder:text-fg/30 transition-colors focus:border-gold focus:outline-none"
             />
           </div>
+
+          {/* Password */}
           <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="font-body text-xs uppercase tracking-widest text-fg/45">
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="password"
+                className="font-body text-xs uppercase tracking-widest text-fg/45"
+              >
                 Password
               </label>
-              <Link href="/forgot-password" className="font-body text-xs text-gold link-underline">
+              <Link
+                href="/forgot-password"
+                className="font-body text-xs text-gold hover:underline"
+              >
                 Forgot password?
               </Link>
             </div>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              className="mt-1 w-full border-b border-edge/20 bg-transparent py-3 font-body text-sm text-fg placeholder:text-fg/35 focus:border-gold focus:outline-none"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                autoComplete="current-password"
+                aria-label="Password"
+                placeholder="••••••••"
+                className="w-full border-b border-edge/20 bg-transparent pb-3 pt-1 pr-10 font-body text-sm text-fg placeholder:text-fg/30 transition-colors focus:border-gold focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((p) => !p)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-0 top-1 text-fg/40 hover:text-gold transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
 
-          {error && <p className="font-body text-sm text-red-400">{error}</p>}
+          {/* Error */}
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-sm border border-red-500/30 bg-red-500/10 px-4 py-3 font-body text-sm text-red-400"
+            >
+              {error}
+            </motion.p>
+          )}
 
-          <button type="submit" disabled={loading} className="btn-gold mt-2 disabled:opacity-70">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-gold mt-2 flex w-full items-center justify-center gap-2 py-4 disabled:opacity-70"
+          >
             {loading && <Loader2 size={16} className="animate-spin" />}
-            {loading ? "Signing In" : "Sign In"}
+            {loading ? "Signing In…" : "Sign In"}
           </button>
         </form>
 
-        <p className="mt-6 text-center font-body text-sm text-fg/55">
+        <div className="my-8 flex items-center gap-4">
+          <span className="h-px flex-1 bg-edge/15" />
+          <span className="font-body text-xs uppercase tracking-widest text-fg/30">or</span>
+          <span className="h-px flex-1 bg-edge/15" />
+        </div>
+
+        <p className="text-center font-body text-sm text-fg/55">
           New to Glimoré?{" "}
-          <Link href="/signup" className="text-gold link-underline">
+          <Link href="/signup" className="font-medium text-gold hover:underline">
             Create an account
           </Link>
         </p>

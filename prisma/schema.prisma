@@ -122,31 +122,43 @@ model Category {
 }
 
 model Product {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  tagline        String?
-  description    String
-  price          Int
-  compareAtPrice Int?
-  categoryId     String?
-  category       Category? @relation(fields: [categoryId], references: [id])
-  collection     String?
-  badge          String?
-  image          String
-  gallery        String[]
-  notesTop       String[]
-  notesHeart     String[]
-  notesBase      String[]
-  burnTime       String?
-  weight         String?
-  vessel         String?
-  stock          Int      @default(0)
-  isActive       Boolean  @default(true)
-  rating         Float    @default(0)
-  reviewCount    Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  tagline           String?
+  description       String
+  price             Int
+  compareAtPrice    Int?
+  sku               String?  @unique
+  categoryId        String?
+  category          Category? @relation(fields: [categoryId], references: [id])
+  collection        String?
+  subcategory       String?
+  badge             String?
+  image             String
+  gallery           String[]
+  fragrance         String?
+  fragranceProfile  String?
+  mood              String?
+  capacity          String?
+  burnTime          String?
+  containerType     String?
+  weight            String?
+  vessel            String?
+  colors            String[]
+  variants          Json?
+  careInstructions  String?
+  usageInstructions String?
+  kitIncludes       String?
+  stock             Int      @default(50)
+  isActive          Boolean  @default(true)
+  rating            Float    @default(4.9)
+  reviewCount       Int      @default(0)
+  notesTop          String[]
+  notesHeart        String[]
+  notesBase         String[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   orderItems    OrderItem[]
   cartItems     CartItem[]
@@ -177,6 +189,9 @@ model CartItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(1)
+  variant   String?
+  fragrance String?
+  color     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -259,6 +274,9 @@ model OrderItem {
   image     String
   price     Int
   quantity  Int
+  variant   String?
+  fragrance String?
+  color     String?
 
   @@index([orderId])
 }
