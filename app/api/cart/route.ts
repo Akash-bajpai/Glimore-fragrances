@@ -16,6 +16,9 @@ export async function GET() {
     items.map((i) => ({
       productId: i.productId,
       quantity: i.quantity,
+      variant: i.variant,
+      fragrance: i.fragrance,
+      color: i.color,
       product: {
         id: i.product.id,
         name: i.product.name,

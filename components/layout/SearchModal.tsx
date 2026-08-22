@@ -9,31 +9,32 @@ import { products } from "@/data/products";
 import { formatINR, cn } from "@/lib/utils";
 
 interface Props {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
+  onSelect?: (id: string) => void;
 }
 
-export function SearchModal({ isOpen, onClose }: Props) {
+export function SearchModal({ open, onClose, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (open) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setQuery("");
     }
-  }, [isOpen]);
+  }, [open]);
 
   // Close on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) window.addEventListener("keydown", handler);
+    if (open) window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [open, onClose]);
 
   // Live product search
   const results = useMemo(() => {
@@ -77,7 +78,7 @@ export function SearchModal({ isOpen, onClose }: Props) {
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {open && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -131,41 +132,66 @@ export function SearchModal({ isOpen, onClose }: Props) {
               {query.trim().length >= 2 ? (
                 results.length > 0 ? (
                   <div className="divide-y divide-edge/10">
-                    {results.map((product) => (
-                      <Link
-                        key={product.id}
-                        href={`/products/${product.slug}`}
-                        onClick={onClose}
-                        className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gold/5 group"
-                      >
-                        <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-sm bg-bg">
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                            sizes="40px"
+                    {results.map((product) => {
+                      const isButton = !!onSelect;
+                      const content = (
+                        <>
+                          <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-sm bg-bg">
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                              sizes="40px"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 text-left">
+                            <p className="font-body text-sm font-medium text-fg group-hover:text-gold transition-colors truncate">
+                              {product.name}
+                            </p>
+                            <p className="font-body text-xs text-fg/45 truncate">
+                              {product.category}
+                              {product.fragrance ? ` · ${product.fragrance}` : ""}
+                            </p>
+                          </div>
+                          <span className="font-body text-sm text-fg/70 shrink-0">
+                            {formatINR(product.price)}
+                          </span>
+                          <ArrowRight
+                            size={14}
+                            className="text-fg/30 group-hover:text-gold transition-colors shrink-0"
+                            aria-hidden="true"
                           />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-body text-sm font-medium text-fg group-hover:text-gold transition-colors truncate">
-                            {product.name}
-                          </p>
-                          <p className="font-body text-xs text-fg/45 truncate">
-                            {product.category}
-                            {product.fragrance ? ` · ${product.fragrance}` : ""}
-                          </p>
-                        </div>
-                        <span className="font-body text-sm text-fg/70 shrink-0">
-                          {formatINR(product.price)}
-                        </span>
-                        <ArrowRight
-                          size={14}
-                          className="text-fg/30 group-hover:text-gold transition-colors shrink-0"
-                          aria-hidden="true"
-                        />
-                      </Link>
-                    ))}
+                        </>
+                      );
+
+                      if (isButton) {
+                        return (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => {
+                              onSelect!(product.id);
+                              onClose();
+                            }}
+                            className="w-full flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gold/5 group"
+                          >
+                            {content}
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={product.id}
+                          href={`/products/${product.slug}`}
+                          onClick={onClose}
+                          className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gold/5 group"
+                        >
+                          {content}
+                        </Link>
+                      );
+                    })}
                     <Link
                       href={`/shop?q=${encodeURIComponent(query)}`}
                       onClick={onClose}

@@ -4,7 +4,20 @@ import { FlameMark } from "@/components/ui/FlameMark";
 import { siteConfig, navLinks } from "@/data/content";
 import { categories } from "@/data/products";
 
-const policies = ["Privacy Policy", "Terms of Service", "Shipping Policy", "Return & Refund"];
+const policies = [
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms of Service", href: "/terms-of-service" },
+  { label: "Shipping Policy", href: "/shipping-policy" },
+  { label: "Refund Policy", href: "/refund-policy" },
+];
+
+const categorySlugs: Record<string, string> = {
+  "Luxury Candles": "luxury-candles",
+  "Car Perfumes": "car-perfumes",
+  "Soy Wax Sachets": "wardrobe-sachets",
+  "Home Diffusers": "home-diffusers",
+  "Fragrance Oils": "fragrance-oils",
+};
 
 export function Footer() {
   return (
@@ -31,25 +44,28 @@ export function Footer() {
 
           <FooterColumn title="Explore">
             {navLinks.map((l) => (
-              <a key={l.href} href={l.href} className="link-underline">
+              <Link key={l.href} href={l.href} className="link-underline">
                 {l.label}
-              </a>
+              </Link>
             ))}
           </FooterColumn>
 
           <FooterColumn title="Categories">
-            {categories.slice(0, 4).map((c) => (
-              <a key={c.name} href="#collections" className="link-underline">
-                {c.name}
-              </a>
-            ))}
+            {categories.slice(0, 5).map((c) => {
+              const slug = categorySlugs[c.name] || c.slug;
+              return (
+                <Link key={c.name} href={`/collections/${slug}`} className="link-underline">
+                  {c.name}
+                </Link>
+              );
+            })}
           </FooterColumn>
 
           <FooterColumn title="Policies">
             {policies.map((p) => (
-              <a key={p} href="#" className="link-underline">
-                {p}
-              </a>
+              <Link key={p.label} href={p.href} className="link-underline">
+                {p.label}
+              </Link>
             ))}
           </FooterColumn>
         </div>

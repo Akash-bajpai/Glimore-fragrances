@@ -10,6 +10,9 @@ const schema = z.object({
       z.object({
         productId: z.string().min(1),
         quantity: z.number().int().min(1).max(20),
+        fragrance: z.string().optional().nullable(),
+        color: z.string().optional().nullable(),
+        variant: z.string().optional().nullable(),
       })
     )
     .max(50),
@@ -36,7 +39,14 @@ export async function POST(request: NextRequest) {
       prisma.cartItem.createMany({
         data: parsed.data.items
           .filter((i) => validIds.has(i.productId))
-          .map((i) => ({ userId: session.userId, productId: i.productId, quantity: i.quantity })),
+          .map((i) => ({
+            userId: session.userId,
+            productId: i.productId,
+            quantity: i.quantity,
+            fragrance: i.fragrance || null,
+            color: i.color || null,
+            variant: i.variant || null,
+          })),
       }),
     ]);
 

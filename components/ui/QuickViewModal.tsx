@@ -138,11 +138,13 @@ export function QuickViewModal({ product, onClose }: QuickViewModalProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 font-body text-xs">
-                <NoteColumn label="Top" notes={product.notes.top} />
-                <NoteColumn label="Heart" notes={product.notes.heart} />
-                <NoteColumn label="Base" notes={product.notes.base} />
-              </div>
+              {product.notes && (
+                <div className="grid grid-cols-3 gap-3 font-body text-xs">
+                  <NoteColumn label="Top" notes={product.notes.top} />
+                  <NoteColumn label="Heart" notes={product.notes.heart} />
+                  <NoteColumn label="Base" notes={product.notes.base} />
+                </div>
+              )}
 
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex items-center rounded-full border border-edge/25">
