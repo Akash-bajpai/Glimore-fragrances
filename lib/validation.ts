@@ -17,7 +17,9 @@ export const passwordSchema = z
 export const phoneSchema = z
   .string()
   .trim()
-  .regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit Indian mobile number.");
+  .transform((value) => value.replace(/[^0-9+]/g, ""))
+  .transform((value) => value.replace(/^\+91/, "").replace(/^91(?=[6-9][0-9]{9}$)/, ""))
+  .pipe(z.string().regex(/^[6-9][0-9]{9}$/, "Enter a valid 10-digit Indian mobile number."));
 
 export const pincodeSchema = z
   .string()

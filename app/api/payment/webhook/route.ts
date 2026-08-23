@@ -85,11 +85,15 @@ async function confirmPaymentByProviderOrderId(razorpayOrderId: string, razorpay
   // Idempotent — if /api/payment/verify already handled this, do nothing.
   if (payment.status === "PAID") return;
 
-  await prisma.$transaction(async (tx) => {
-    await tx.payment.update({
-      where: { id: payment.id },
+  const confirmed = await prisma.$transaction(async (tx) => {
+    const paymentClaim = await tx.payment.updateMany({
+      where: { id: payment.id, status: "PENDING" },
       data: { status: "PAID", providerPaymentId: razorpayPaymentId },
     });
+
+    // A client verification request may have won the race. Treat the webhook
+    // as an idempotent acknowledgement rather than touching stock again.
+    if (paymentClaim.count === 0) return false;
 
     await tx.order.update({ where: { id: payment.orderId }, data: { status: "CONFIRMED" } });
 
@@ -109,7 +113,10 @@ async function confirmPaymentByProviderOrderId(razorpayOrderId: string, razorpay
     }
 
     await tx.cartItem.deleteMany({ where: { userId: payment.order.userId } });
+    return true;
   });
+
+  if (!confirmed) return;
 
   sendEmail({
     to: payment.order.user.email,

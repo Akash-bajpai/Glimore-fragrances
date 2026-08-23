@@ -63,6 +63,7 @@ export default function CheckoutPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [synced, setSynced] = useState(false);
 
@@ -182,6 +183,10 @@ export default function CheckoutPage() {
 
   async function placeOrder() {
     if (!shippingId) return;
+    if (paymentMethod !== "COD" && !razorpayReady) {
+      setError("Secure payment is still loading. Please wait a moment and try again.");
+      return;
+    }
     setPlacingOrder(true);
     setError(null);
 
@@ -248,13 +253,16 @@ export default function CheckoutPage() {
         },
       };
 
+      if (typeof window.Razorpay !== "function") {
+        throw new Error("Razorpay checkout did not load.");
+      }
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", function () {
         router.push(`/checkout/failed?orderId=${order.id}`);
       });
       rzp.open();
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error. Please try again.");
       setPlacingOrder(false);
     }
   }
@@ -273,7 +281,12 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+        onLoad={() => setRazorpayReady(true)}
+        onError={() => setError("Secure payment could not load. Please refresh and try again.")}
+      />
 
       <div className="section-px mx-auto max-w-6xl py-16 sm:py-24">
         <h1 className="mb-10 font-display text-3xl sm:text-4xl">Checkout</h1>
@@ -449,7 +462,7 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={placeOrder}
-                  disabled={placingOrder || !summary}
+                  disabled={placingOrder || !summary || (paymentMethod !== "COD" && !razorpayReady)}
                   className="btn-gold mt-2 disabled:opacity-60"
                 >
                   {placingOrder && <Loader2 size={16} className="animate-spin" />}
@@ -457,7 +470,9 @@ export default function CheckoutPage() {
                     ? "Processing"
                     : paymentMethod === "COD"
                     ? "Place Order"
-                    : `Pay ${summary ? formatINR(summary.pricing.total) : ""}`}
+                    : razorpayReady
+                    ? `Pay ${summary ? formatINR(summary.pricing.total) : ""}`
+                    : "Loading secure payment…"}
                 </button>
               </motion.div>
             )}

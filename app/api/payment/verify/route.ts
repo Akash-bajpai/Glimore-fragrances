@@ -53,13 +53,17 @@ export async function POST(request: NextRequest) {
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { orderId: order.id },
+      const paymentClaim = await tx.payment.updateMany({
+        where: { id: order.payment!.id, status: "PENDING" },
         data: {
           status: "PAID",
           providerPaymentId: razorpay_payment_id,
         },
       });
+
+      // The webhook may have confirmed the payment between the read above and
+      // this transaction. In that case, do not decrement stock a second time.
+      if (paymentClaim.count === 0) return null;
 
       const confirmed = await tx.order.update({
         where: { id: order.id },
@@ -86,6 +90,8 @@ export async function POST(request: NextRequest) {
 
       return confirmed;
     });
+
+    if (!updatedOrder) return ok({ order });
 
     sendEmail({
       to: order.user.email,

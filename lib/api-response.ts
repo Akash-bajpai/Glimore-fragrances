@@ -27,7 +27,7 @@ export function tooManyRequests(message = "Too many requests. Please slow down."
 
 export function fromZodError(error: ZodError) {
   const details = error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
-  return fail("Please check the highlighted fields.", 422, details);
+  return fail(details[0]?.message ?? "Please check the highlighted fields.", 422, details);
 }
 
 export function serverError(err: unknown) {

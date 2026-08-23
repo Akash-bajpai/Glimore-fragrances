@@ -89,6 +89,15 @@ export async function POST(request: NextRequest) {
 
     const isCod = paymentMethod === "COD";
 
+    if (
+      !isCod &&
+      (!process.env.RAZORPAY_KEY_ID ||
+        !process.env.RAZORPAY_KEY_SECRET ||
+        !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)
+    ) {
+      return fail("Online payments are not configured yet. Please choose Cash on Delivery or contact support.", 503);
+    }
+
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
