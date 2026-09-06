@@ -81,6 +81,9 @@ export async function POST(request: NextRequest) {
       image: c.product.image,
       price: c.product.price,
       quantity: c.quantity,
+      variant: c.variant,
+      fragrance: c.fragrance,
+      color: c.color,
     }));
 
     const pricing = calculateOrderPricing(lines, coupon, pin.serviceable);
@@ -122,6 +125,9 @@ export async function POST(request: NextRequest) {
               image: l.image,
               price: l.price,
               quantity: l.quantity,
+              variant: l.variant,
+              fragrance: l.fragrance,
+              color: l.color,
             })),
           },
           payment: {

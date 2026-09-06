@@ -33,10 +33,11 @@ export default function SignupPage() {
 
     setLoading(true);
     const payload = {
-      name: String(form.get("name") || ""),
-      email: String(form.get("email") || ""),
-      phone: String(form.get("phone") || "") || undefined,
+      name: String(form.get("name") || "").trim(),
+      email: String(form.get("email") || "").trim(),
+      phone: String(form.get("phone") || "").trim() || undefined,
       password,
+      confirmPassword: confirm,
     };
 
     try {

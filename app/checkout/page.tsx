@@ -254,6 +254,15 @@ export default function CheckoutPage() {
       };
 
       if (typeof window.Razorpay !== "function") {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Razorpay Checkout SDK."));
+          document.body.appendChild(script);
+        });
+      }
+      if (typeof window.Razorpay !== "function") {
         throw new Error("Razorpay checkout did not load.");
       }
       const rzp = new window.Razorpay(options);

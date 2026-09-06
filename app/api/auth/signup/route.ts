@@ -9,7 +9,7 @@ import { sendEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
-    const limit = rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+    const limit = rateLimit(`signup:${ip}`, 10, 60 * 60 * 1000);
     if (!limit.success) return tooManyRequests();
 
     const body = await request.json().catch(() => null);
@@ -19,16 +19,21 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return fromZodError(parsed.error);
     const { name, email, password, phone } = parsed.data;
 
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      // Same status/shape as a validation error so we don't reveal via timing/shape
-      // whether this specific address is a strong enumeration signal.
-      return fail("An account with this email already exists.", 409);
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      return fail("Email is already registered. Please sign in or use a different email.", 409);
+    }
+
+    if (phone) {
+      const existingPhone = await prisma.user.findFirst({ where: { phone } });
+      if (existingPhone) {
+        return fail("Phone number is already registered to another account.", 409);
+      }
     }
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, phone },
+      data: { name, email, passwordHash, phone: phone ?? null },
     });
 
     const token = await signSessionToken({ userId: user.id, role: user.role });
