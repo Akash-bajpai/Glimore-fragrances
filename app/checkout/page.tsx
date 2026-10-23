@@ -220,6 +220,7 @@ export default function CheckoutPage() {
         return;
       }
 
+      let paymentAttemptFailed = false;
       const options = {
         key: razorpay.keyId,
         amount: razorpay.amount,
@@ -230,24 +231,37 @@ export default function CheckoutPage() {
         prefill: { name: selectedShipping?.fullName, contact: selectedShipping?.phone },
         theme: { color: "#C8A96A" },
         handler: async function (response: any) {
-          const verifyRes = await fetch("/api/payment/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: order.id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-          if (verifyRes.ok) {
-            router.push(`/checkout/success?orderId=${order.id}`);
-          } else {
-            router.push(`/checkout/failed?orderId=${order.id}`);
+          try {
+            const verifyRes = await fetch("/api/payment/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: order.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            if (verifyRes.ok) {
+              router.push(`/checkout/success?orderId=${order.id}`);
+            } else {
+              router.push(`/checkout/failed?orderId=${order.id}`);
+            }
+          } catch {
+            // The payment went through at Razorpay but our confirmation call
+            // didn't reach the server (network drop). The webhook will still
+            // confirm it, so show the order page rather than "failed".
+            router.push(`/account/orders/${order.id}`);
           }
         },
         modal: {
           ondismiss: function () {
+            // If an attempt failed and the customer closed the popup instead
+            // of retrying, take them to the retry page for this same order.
+            if (paymentAttemptFailed) {
+              router.push(`/checkout/failed?orderId=${order.id}`);
+              return;
+            }
             setPlacingOrder(false);
           },
         },
@@ -267,7 +281,10 @@ export default function CheckoutPage() {
       }
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", function () {
-        router.push(`/checkout/failed?orderId=${order.id}`);
+        // Razorpay keeps its popup open after a failed attempt so the customer
+        // can retry (another UPI app, another card). Don't navigate away here;
+        // ondismiss handles the case where they give up.
+        paymentAttemptFailed = true;
       });
       rzp.open();
     } catch (err) {

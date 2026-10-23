@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { calculateOrderPricing, validatePincode, estimatedDeliveryDate } from "@/lib/pricing";
 import { createRazorpayOrder } from "@/lib/razorpay";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendOrderConfirmationEmail } from "@/lib/order-email";
 import { ok, fail, unauthorized, fromZodError, serverError, tooManyRequests } from "@/lib/api-response";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -28,6 +28,15 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return unauthorized();
+
+    const account = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { emailVerifiedAt: true },
+    });
+    if (!account) return unauthorized();
+    if (!account.emailVerifiedAt) {
+      return fail("Please verify your email before placing an order.", 403, { code: "EMAIL_NOT_VERIFIED" });
+    }
 
     const ip = getClientIp(request);
     const limit = rateLimit(`order-create:${session.userId}:${ip}`, 10, 10 * 60 * 1000);
@@ -141,7 +150,9 @@ export async function POST(request: NextRequest) {
         include: { items: true, payment: true },
       });
 
-      if (coupon) {
+      // COD orders use the coupon now; online orders count it only once the
+      // payment is confirmed (see /api/payment/verify and the webhook).
+      if (coupon && isCod) {
         await tx.coupon.update({
           where: { id: coupon.id },
           data: { usedCount: { increment: 1 } },
@@ -174,18 +185,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (isCod) {
-      const user = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (user) {
-        sendEmail({
-          to: user.email,
-          subject: `Order confirmed — ${order.orderNumber}`,
-          html: orderConfirmationEmailHtml({
-            name: user.name,
-            orderNumber: order.orderNumber,
-            total: order.total,
-          }),
-        }).catch(() => {});
-      }
+      await sendOrderConfirmationEmail(order.id);
 
       return ok({ order, razorpay: null }, 201);
     }
@@ -193,11 +193,31 @@ export async function POST(request: NextRequest) {
     // Online payment: create the matching Razorpay order and hand the client
     // what it needs to open Razorpay Checkout. Nothing is confirmed yet —
     // /api/payment/verify (or the webhook) is what actually flips this to PAID.
-    const razorpayOrder = await createRazorpayOrder({
-      amountRupees: pricing.total,
-      receipt: order.orderNumber,
-      notes: { orderId: order.id, userId: session.userId },
-    });
+    let razorpayOrder: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      razorpayOrder = await createRazorpayOrder({
+        amountRupees: pricing.total,
+        receipt: order.orderNumber,
+        notes: { orderId: order.id, userId: session.userId },
+      });
+    } catch (err) {
+      // Wrong/missing keys or Razorpay unreachable: don't leave an orphan
+      // PENDING order behind, and tell the customer plainly.
+      console.error("[orders/create] Razorpay order creation failed:", err);
+      await prisma
+        .$transaction([
+          prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } }),
+          prisma.payment.update({
+            where: { orderId: order.id },
+            data: { status: "FAILED", failureReason: "Could not start online payment" },
+          }),
+        ])
+        .catch(() => {});
+      return fail(
+        "Online payment couldn't be started right now. Please try again in a moment or choose Cash on Delivery.",
+        502
+      );
+    }
 
     await prisma.payment.update({
       where: { orderId: order.id },
@@ -211,7 +231,10 @@ export async function POST(request: NextRequest) {
           orderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          // The same key that created this Razorpay order (a key ID is public).
+          // Using it here avoids a mismatch if NEXT_PUBLIC_RAZORPAY_KEY_ID was
+          // set to a different (e.g. test vs live) key.
+          keyId: process.env.RAZORPAY_KEY_ID,
         },
       },
       201

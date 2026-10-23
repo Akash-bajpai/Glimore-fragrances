@@ -36,6 +36,11 @@ function LoginForm() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 403 && data.details?.code === "EMAIL_NOT_VERIFIED") {
+          const params = new URLSearchParams({ email: data.details.email ?? payload.email, redirect: redirectTo });
+          router.push(`/verify-email?${params.toString()}`);
+          return;
+        }
         setError(data.error ?? "Invalid email or password.");
         return;
       }

@@ -4,7 +4,8 @@ import { hashPassword, signSessionToken, sessionCookieOptions } from "@/lib/auth
 import { signupSchema } from "@/lib/validation";
 import { ok, fail, fromZodError, serverError, tooManyRequests } from "@/lib/api-response";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, welcomeEmail } from "@/lib/email";
+import { issueEmailOtp, isEmailVerificationRequired } from "@/lib/otp";
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,20 +33,38 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
+    const mustVerify = isEmailVerificationRequired();
+    if (!mustVerify) {
+      console.warn("[signup] No email provider configured - new account auto-verified. Set BREVO_API_KEY + EMAIL_FROM to enable email OTP.");
+    }
     const user = await prisma.user.create({
-      data: { name, email, passwordHash, phone: phone ?? null },
+      data: {
+        name,
+        email,
+        passwordHash,
+        phone: phone ?? null,
+        emailVerifiedAt: mustVerify ? null : new Date(),
+      },
     });
 
-    const token = await signSessionToken({ userId: user.id, role: user.role });
+    if (mustVerify) {
+      // No session until the emailed 6-digit code is confirmed (/api/auth/verify-email).
+      const issued = await issueEmailOtp(user, { ignoreCooldown: true });
+      return ok(
+        {
+          requiresVerification: true,
+          email: user.email,
+          emailSent: issued.ok && issued.sent,
+        },
+        201
+      );
+    }
 
-    sendEmail({
-      to: user.email,
-      subject: "Welcome to Glimoré Fragrances",
-      html: `<p>Hi ${name}, thanks for creating an account with Glimoré Fragrances.</p>`,
-    }).catch(() => {});
+    const token = await signSessionToken({ userId: user.id, role: user.role });
+    await sendEmail({ to: user.email, toName: user.name, ...welcomeEmail(user.name) });
 
     const { passwordHash: _omit, ...safeUser } = user;
-    const response = ok(safeUser, 201);
+    const response = ok({ ...safeUser, requiresVerification: false }, 201);
     response.cookies.set(sessionCookieOptions.name, token, sessionCookieOptions);
     return response;
   } catch (err) {

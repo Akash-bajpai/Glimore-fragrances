@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { verifyPaymentSignature } from "@/lib/razorpay";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendOrderConfirmationEmail } from "@/lib/order-email";
 import { ok, fail, unauthorized, notFound, fromZodError, serverError } from "@/lib/api-response";
 
 const schema = z.object({
@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (!signatureValid) {
-      await prisma.payment.update({
-        where: { orderId: order.id },
+      // Never let a bad signature overwrite a payment that is already PAID.
+      await prisma.payment.updateMany({
+        where: { orderId: order.id, status: { in: ["PENDING", "FAILED"] } },
         data: { status: "FAILED", failureReason: "Signature verification failed" },
       });
       return fail("Payment verification failed. If you were charged, contact support.", 400);
@@ -54,10 +55,14 @@ export async function POST(request: NextRequest) {
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const paymentClaim = await tx.payment.updateMany({
-        where: { id: order.payment!.id, status: "PENDING" },
+        // FAILED is claimable too: Razorpay lets the customer retry on the
+        // same order after a failed attempt (e.g. a declined UPI request), and
+        // the earlier payment.failed must not block the successful retry.
+        where: { id: order.payment!.id, status: { in: ["PENDING", "FAILED"] } },
         data: {
           status: "PAID",
           providerPaymentId: razorpay_payment_id,
+          failureReason: null,
         },
       });
 
@@ -86,6 +91,15 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Online orders count against a coupon's usage only once actually paid,
+      // so abandoned checkouts don't burn limited-use coupons.
+      if (confirmed.couponId) {
+        await tx.coupon.update({
+          where: { id: confirmed.couponId },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
       await tx.cartItem.deleteMany({ where: { userId: session.userId } });
 
       return confirmed;
@@ -93,15 +107,7 @@ export async function POST(request: NextRequest) {
 
     if (!updatedOrder) return ok({ order });
 
-    sendEmail({
-      to: order.user.email,
-      subject: `Order confirmed — ${order.orderNumber}`,
-      html: orderConfirmationEmailHtml({
-        name: order.user.name,
-        orderNumber: order.orderNumber,
-        total: order.total,
-      }),
-    }).catch(() => {});
+    await sendOrderConfirmationEmail(order.id);
 
     return ok({ order: updatedOrder });
   } catch (err) {
