@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Script from "next/script";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -33,6 +34,20 @@ function FailedContent() {
       }
       const order = data.data;
 
+      // Already paid (e.g. the webhook confirmed it) — nothing to retry.
+      if (order.payment?.status === "PAID") {
+        router.push(`/checkout/success?orderId=${order.id}`);
+        return;
+      }
+      if (order.paymentMethod === "COD" || !order.payment?.providerOrderId || order.status === "CANCELLED") {
+        setError("This order can't be retried. Please place it again from your bag.");
+        return;
+      }
+      if (typeof window.Razorpay !== "function") {
+        setError("Secure payment could not load. Please refresh and try again.");
+        return;
+      }
+
       // Re-create a fresh Razorpay order for the same total via the same
       // create-order endpoint's underlying pricing logic would double the
       // order — instead, retrying simply re-opens Checkout against the
@@ -47,18 +62,22 @@ function FailedContent() {
         order_id: order.payment?.providerOrderId,
         theme: { color: "#C8A96A" },
         handler: async function (response: any) {
-          const verifyRes = await fetch("/api/payment/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: order.id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-          if (verifyRes.ok) router.push(`/checkout/success?orderId=${order.id}`);
-          else setError("Payment could not be verified. Please contact support.");
+          try {
+            const verifyRes = await fetch("/api/payment/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: order.id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            if (verifyRes.ok) router.push(`/checkout/success?orderId=${order.id}`);
+            else setError("Payment could not be verified. Please contact support.");
+          } catch {
+            router.push(`/account/orders/${order.id}`);
+          }
         },
       };
 
@@ -72,6 +91,10 @@ function FailedContent() {
   }
 
   return (
+    <>
+    {/* Load Checkout here too: this page can be opened directly or refreshed,
+        in which case the script from /checkout is not on the page. */}
+    <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
     <div className="section-px flex min-h-[85vh] flex-col items-center justify-center py-24 text-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -102,6 +125,7 @@ function FailedContent() {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }
 

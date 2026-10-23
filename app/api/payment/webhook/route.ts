@@ -7,8 +7,8 @@ import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
  * Razorpay webhook endpoint. This is deliberately NOT behind session auth —
  * Razorpay's servers call this directly, so the ONLY trust boundary is the
  * HMAC signature below. Configure this URL in Razorpay Dashboard → Settings
- * → Webhooks, pointing at {APP_URL}/api/payment/webhook, and select at least
- * the `payment.captured` and `payment.failed` events.
+ * → Webhooks, pointing at {APP_URL}/api/payment/webhook, and select the
+ * `payment.captured`, `payment.failed` and `order.paid` events.
  *
  * This exists because the client-side /api/payment/verify call can simply
  * never happen (tab closed mid-payment, network drop after paying) — the
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       const paymentEntity = event.payload?.payment?.entity;
       const razorpayOrderId: string | undefined = paymentEntity?.order_id;
       if (razorpayOrderId) {
+        // Only PENDING moves to FAILED; a PAID payment is never downgraded.
         await prisma.payment.updateMany({
           where: { providerOrderId: razorpayOrderId, status: "PENDING" },
           data: { status: "FAILED", failureReason: paymentEntity?.error_description ?? "Payment failed" },
@@ -65,9 +66,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("[webhook] processing error:", err);
-    // Still 200 so Razorpay doesn't hammer retries for a bug on our side that
-    // a retry won't fix; the error is logged for investigation.
-    return NextResponse.json({ received: true, note: "logged for review" });
+    // Return 5xx so Razorpay retries the delivery (e.g. a transient database
+    // error). Processing is idempotent, so a retry can never double-confirm.
+    return NextResponse.json({ error: "Processing failed, will be retried" }, { status: 500 });
   }
 }
 
@@ -87,8 +88,11 @@ async function confirmPaymentByProviderOrderId(razorpayOrderId: string, razorpay
 
   const confirmed = await prisma.$transaction(async (tx) => {
     const paymentClaim = await tx.payment.updateMany({
-      where: { id: payment.id, status: "PENDING" },
-      data: { status: "PAID", providerPaymentId: razorpayPaymentId },
+      // FAILED is claimable too: a customer can retry on the same Razorpay
+      // order after a failed attempt, and that retry's capture must still
+      // confirm the order.
+      where: { id: payment.id, status: { in: ["PENDING", "FAILED"] } },
+      data: { status: "PAID", providerPaymentId: razorpayPaymentId, failureReason: null },
     });
 
     // A client verification request may have won the race. Treat the webhook
@@ -109,6 +113,13 @@ async function confirmPaymentByProviderOrderId(razorpayOrderId: string, razorpay
           reason: "ORDER_PLACED",
           orderId: payment.orderId,
         },
+      });
+    }
+
+    if (payment.order.couponId) {
+      await tx.coupon.update({
+        where: { id: payment.order.couponId },
+        data: { usedCount: { increment: 1 } },
       });
     }
 

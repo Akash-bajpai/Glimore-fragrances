@@ -141,7 +141,9 @@ export async function POST(request: NextRequest) {
         include: { items: true, payment: true },
       });
 
-      if (coupon) {
+      // COD orders use the coupon now; online orders count it only once the
+      // payment is confirmed (see /api/payment/verify and the webhook).
+      if (coupon && isCod) {
         await tx.coupon.update({
           where: { id: coupon.id },
           data: { usedCount: { increment: 1 } },
@@ -193,11 +195,31 @@ export async function POST(request: NextRequest) {
     // Online payment: create the matching Razorpay order and hand the client
     // what it needs to open Razorpay Checkout. Nothing is confirmed yet —
     // /api/payment/verify (or the webhook) is what actually flips this to PAID.
-    const razorpayOrder = await createRazorpayOrder({
-      amountRupees: pricing.total,
-      receipt: order.orderNumber,
-      notes: { orderId: order.id, userId: session.userId },
-    });
+    let razorpayOrder: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      razorpayOrder = await createRazorpayOrder({
+        amountRupees: pricing.total,
+        receipt: order.orderNumber,
+        notes: { orderId: order.id, userId: session.userId },
+      });
+    } catch (err) {
+      // Wrong/missing keys or Razorpay unreachable: don't leave an orphan
+      // PENDING order behind, and tell the customer plainly.
+      console.error("[orders/create] Razorpay order creation failed:", err);
+      await prisma
+        .$transaction([
+          prisma.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } }),
+          prisma.payment.update({
+            where: { orderId: order.id },
+            data: { status: "FAILED", failureReason: "Could not start online payment" },
+          }),
+        ])
+        .catch(() => {});
+      return fail(
+        "Online payment couldn't be started right now. Please try again in a moment or choose Cash on Delivery.",
+        502
+      );
+    }
 
     await prisma.payment.update({
       where: { orderId: order.id },
@@ -211,7 +233,10 @@ export async function POST(request: NextRequest) {
           orderId: razorpayOrder.id,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
-          keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          // The same key that created this Razorpay order (a key ID is public).
+          // Using it here avoids a mismatch if NEXT_PUBLIC_RAZORPAY_KEY_ID was
+          // set to a different (e.g. test vs live) key.
+          keyId: process.env.RAZORPAY_KEY_ID,
         },
       },
       201

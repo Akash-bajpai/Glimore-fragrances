@@ -14,7 +14,7 @@ Fill in `.env`:
 - **DATABASE_URL** — any Postgres works. Fastest free option: [neon.tech](https://neon.tech) or [supabase.com](https://supabase.com) — create a project, copy the connection string.
 - **AUTH_SECRET** — run `openssl rand -base64 32` and paste the output.
 - **RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET** — from [dashboard.razorpay.com/app/keys](https://dashboard.razorpay.com/app/keys). Use **Test Mode** keys to begin — no real money moves, and Razorpay gives you test card/UPI credentials.
-- **RAZORPAY_WEBHOOK_SECRET** — after deploying (or via a tunnel like `ngrok` for local dev), add a webhook in Razorpay Dashboard → Settings → Webhooks pointing at `{your-url}/api/payment/webhook`, subscribed to `payment.captured` and `payment.failed`. Razorpay gives you the secret when you create it.
+- **RAZORPAY_WEBHOOK_SECRET** — after deploying (or via a tunnel like `ngrok` for local dev), add a webhook in Razorpay Dashboard → Settings → Webhooks pointing at `{your-url}/api/payment/webhook`, subscribed to `payment.captured`, `payment.failed` and `order.paid`. Razorpay gives you the secret when you create it.
 - **RESEND_API_KEY** (optional) — from [resend.com](https://resend.com), for real password-reset/order-confirmation emails. Without it, those emails are logged to your server console instead — everything still works for local testing.
 
 ## 2. Install, migrate, seed
