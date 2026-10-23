@@ -7,6 +7,7 @@
  *       - prisma migrate deploy   (over the DIRECT/unpooled URL when available)
  *       - seed catalog only if the DB has no products; create admin from env if set
  *     if no database is attached: log and skip (preview builds keep working)
+ *     preview deployments skip migrate/seed (they usually share the production DB)
  *  3. next build
  *
  * Never drops or resets data: `migrate deploy` only applies new migrations,
@@ -34,11 +35,22 @@ const directUrl =
   process.env.DIRECT_URL ||
   pooledUrl;
 
+// Preview deployments usually share the production database. Applying an unmerged
+// branch's migrations there would change production's schema, so previews skip
+// migrate/seed unless MIGRATE_ON_PREVIEW=1 (e.g. when Neon gives each preview its own branch).
+const vercelEnv = process.env.VERCEL_ENV; // "production" | "preview" | "development" | undefined (not on Vercel)
+const skipForPreview = vercelEnv === "preview" && process.env.MIGRATE_ON_PREVIEW !== "1";
+
 if (!pooledUrl) {
   console.warn(
     "\n[vercel-build] DATABASE_URL is not set - skipping database migrations and seed.\n" +
       "[vercel-build] The site will build, but login/signup/orders need a database.\n" +
       "[vercel-build] Fix: Vercel -> Project -> Storage -> connect a Neon Postgres database, then redeploy."
+  );
+} else if (skipForPreview) {
+  console.log(
+    "\n[vercel-build] Preview deployment - skipping migrations and seed so production data/schema are untouched.\n" +
+      "[vercel-build] (Set MIGRATE_ON_PREVIEW=1 if this preview has its own database branch.)"
   );
 } else {
   const migrateEnv = { ...process.env, DATABASE_URL: directUrl };
