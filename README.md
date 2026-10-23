@@ -22,13 +22,31 @@ Fill in `.env`:
 ```bash
 npm install
 npm run db:migrate   # creates all tables in your database
-npm run db:seed      # adds 5 products, 2 sample coupons, and an admin login
+npm run db:seed      # adds the product catalog, 3 sample coupons, and an admin login
 npm run dev
 ```
 
-Your seeded admin login is whatever you set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` to in `.env`
-(defaults to `admin@glimorefragrances.com` — **change the password before going live**). Sign in at
-`/login`, then visit `/admin`.
+The admin account is created only when both `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are set
+(10+ characters, letters and numbers) — there is no default password. Sign in at `/login`, then visit `/admin`.
+
+### Deploying on Vercel (no terminal needed)
+
+1. Vercel → Project → **Storage** → Create Database → **Neon** (free) → connect it to the project.
+   This adds `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct) automatically.
+2. Add `AUTH_SECRET`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and the email vars
+   (`BREVO_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME`) in Settings → Environment Variables.
+3. Deploy. `npm run vercel-build` runs `prisma generate` → `prisma migrate deploy` (over the
+   unpooled URL) → seeds the catalog **only if the database has no products** → creates the admin
+   if missing → `next build`. Existing data is never reset or overwritten. With no `DATABASE_URL`
+   the migrate/seed step is skipped with a log line and the build still succeeds.
+
+### Email + OTP
+
+New accounts must enter a 6-digit code emailed at signup (10-min expiry, 5 attempts, 60s resend
+cooldown) before they can sign in or order. Emails (OTP, welcome, password reset, order
+confirmation) go through Brevo when `BREVO_API_KEY` is set (Resend also supported via
+`RESEND_API_KEY`). In local dev with no key they are printed to the server console; in production
+with no key, OTP is skipped (accounts auto-verified) so signups never get stuck.
 
 ## 3. Test a full order without real money
 

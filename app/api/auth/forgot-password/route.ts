@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { emailSchema } from "@/lib/validation";
 import { ok, fail, tooManyRequests } from "@/lib/api-response";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { sendEmail, passwordResetEmailHtml } from "@/lib/email";
+import { sendEmail, passwordResetEmailHtml, appUrl } from "@/lib/email";
 
 const GENERIC_MESSAGE =
   "If an account exists for that email, we've sent a password reset link.";
@@ -33,13 +33,14 @@ export async function POST(request: NextRequest) {
     data: { userId: user.id, tokenHash, expiresAt },
   });
 
-  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
+  const resetLink = `${appUrl()}/reset-password?token=${rawToken}`;
 
-  sendEmail({
+  await sendEmail({
     to: user.email,
+    toName: user.name,
     subject: "Reset your Glimoré password",
     html: passwordResetEmailHtml(user.name, resetLink),
-  }).catch(() => {});
+  });
 
   return ok({ message: GENERIC_MESSAGE });
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { verifyPaymentSignature } from "@/lib/razorpay";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendOrderConfirmationEmail } from "@/lib/order-email";
 import { ok, fail, unauthorized, notFound, fromZodError, serverError } from "@/lib/api-response";
 
 const schema = z.object({
@@ -107,15 +107,7 @@ export async function POST(request: NextRequest) {
 
     if (!updatedOrder) return ok({ order });
 
-    sendEmail({
-      to: order.user.email,
-      subject: `Order confirmed — ${order.orderNumber}`,
-      html: orderConfirmationEmailHtml({
-        name: order.user.name,
-        orderNumber: order.orderNumber,
-        total: order.total,
-      }),
-    }).catch(() => {});
+    await sendOrderConfirmationEmail(order.id);
 
     return ok({ order: updatedOrder });
   } catch (err) {

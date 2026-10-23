@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { calculateOrderPricing, validatePincode, estimatedDeliveryDate } from "@/lib/pricing";
 import { createRazorpayOrder } from "@/lib/razorpay";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendOrderConfirmationEmail } from "@/lib/order-email";
 import { ok, fail, unauthorized, fromZodError, serverError, tooManyRequests } from "@/lib/api-response";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -28,6 +28,15 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return unauthorized();
+
+    const account = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { emailVerifiedAt: true },
+    });
+    if (!account) return unauthorized();
+    if (!account.emailVerifiedAt) {
+      return fail("Please verify your email before placing an order.", 403, { code: "EMAIL_NOT_VERIFIED" });
+    }
 
     const ip = getClientIp(request);
     const limit = rateLimit(`order-create:${session.userId}:${ip}`, 10, 10 * 60 * 1000);
@@ -176,18 +185,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (isCod) {
-      const user = await prisma.user.findUnique({ where: { id: session.userId } });
-      if (user) {
-        sendEmail({
-          to: user.email,
-          subject: `Order confirmed — ${order.orderNumber}`,
-          html: orderConfirmationEmailHtml({
-            name: user.name,
-            orderNumber: order.orderNumber,
-            total: order.total,
-          }),
-        }).catch(() => {});
-      }
+      await sendOrderConfirmationEmail(order.id);
 
       return ok({ order, razorpay: null }, 201);
     }

@@ -37,7 +37,11 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(parsed.data.password);
 
     await prisma.$transaction([
-      prisma.user.update({ where: { id: resetToken.userId }, data: { passwordHash } }),
+      // Clicking the emailed link proves inbox ownership, so it also verifies the email.
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash, emailVerifiedAt: new Date() },
+      }),
       prisma.passwordResetToken.update({
         where: { id: resetToken.id },
         data: { usedAt: new Date() },

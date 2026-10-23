@@ -2,9 +2,20 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { products, categories, fragranceCatalog } from "../data/products";
 
+/*
+ * Seeding is idempotent and never deletes anything.
+ *
+ *   npm run db:seed              -> upsert catalog (categories, products, coupons) + ensure admin
+ *   tsx prisma/seed.ts --if-empty -> only seed the catalog when the Product table is empty
+ *                                   (used automatically by `npm run vercel-build`), + ensure admin
+ *
+ * Admin account: created ONLY when SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD are both set.
+ * An existing user with that email is never modified (password and role are left alone).
+ */
+
 const prisma = new PrismaClient();
 
-async function main() {
+async function seedCatalog() {
   console.log("Seeding categories...");
   const createdCategories = await Promise.all(
     categories.map((c) =>
@@ -140,22 +151,60 @@ async function main() {
     },
   });
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@glimorefragrances.com";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe123!";
+  console.log(`Catalog seeded: ${products.length} products, ${categories.length} categories, 3 coupons.`);
+}
 
-  console.log(`Seeding admin account (${adminEmail})...`);
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {},
-    create: {
+async function ensureAdmin() {
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    console.log("[seed] SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD not set - skipping admin account.");
+    return;
+  }
+  if (adminPassword.length < 10 || !/[a-zA-Z]/.test(adminPassword) || !/[0-9]/.test(adminPassword)) {
+    console.warn("[seed] SEED_ADMIN_PASSWORD is too weak (need 10+ chars with letters and numbers) - skipping admin account.");
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (existing) {
+    if (existing.role !== "ADMIN") {
+      console.warn(`[seed] ${adminEmail} already exists as a customer account - not changing it. Use a different SEED_ADMIN_EMAIL.`);
+    } else {
+      console.log(`[seed] Admin ${adminEmail} already exists - left unchanged.`);
+    }
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
       name: "Glimoré Admin",
       email: adminEmail,
       passwordHash: await bcrypt.hash(adminPassword, 12),
       role: "ADMIN",
+      emailVerifiedAt: new Date(),
     },
   });
+  console.log(`[seed] Admin account created for ${adminEmail}.`);
+}
 
-  console.log(`Seed complete: ${products.length} products, 5 categories, 3 coupons seeded.`);
+async function main() {
+  const ifEmpty = process.argv.includes("--if-empty");
+
+  if (ifEmpty) {
+    const productCount = await prisma.product.count();
+    if (productCount > 0) {
+      console.log(`[seed] Database already has ${productCount} products - catalog seed skipped (existing data untouched).`);
+    } else {
+      console.log("[seed] Empty database detected - seeding catalog...");
+      await seedCatalog();
+    }
+  } else {
+    await seedCatalog();
+  }
+
+  await ensureAdmin();
 }
 
 main()

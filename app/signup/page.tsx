@@ -53,6 +53,11 @@ export default function SignupPage() {
         return;
       }
 
+      if (data.data?.requiresVerification) {
+        router.push(`/verify-email?email=${encodeURIComponent(data.data.email)}`);
+        return;
+      }
+
       router.push("/account?welcome=1");
       router.refresh();
     } catch {

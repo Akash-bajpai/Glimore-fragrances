@@ -4,6 +4,7 @@ import { verifyPassword, signSessionToken, sessionCookieOptions } from "@/lib/au
 import { loginSchema } from "@/lib/validation";
 import { ok, fail, fromZodError, serverError, tooManyRequests } from "@/lib/api-response";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { issueEmailOtp } from "@/lib/otp";
 
 const GENERIC_ERROR = "Invalid email or password.";
 
@@ -26,6 +27,17 @@ export async function POST(request: NextRequest) {
 
     const validPassword = await verifyPassword(password, user.passwordHash);
     if (!validPassword) return fail(GENERIC_ERROR, 401);
+
+    if (!user.emailVerifiedAt) {
+      // Correct password but email not verified yet: (re)send a code (respects the 60s
+      // cooldown) and tell the client to show the code screen. No session is issued.
+      const issued = await issueEmailOtp(user);
+      return fail("Please verify your email. We've sent a 6-digit code to your inbox.", 403, {
+        code: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+        retryAfterSeconds: issued.ok ? 60 : issued.retryAfterSeconds,
+      });
+    }
 
     const token = await signSessionToken({ userId: user.id, role: user.role });
     const { passwordHash: _omit, ...safeUser } = user;

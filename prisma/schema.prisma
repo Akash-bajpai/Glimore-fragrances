@@ -67,9 +67,12 @@ model User {
   passwordHash String
   phone        String?
   role         Role     @default(CUSTOMER)
+  // Null until the user enters the 6-digit code emailed at signup.
+  emailVerifiedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  emailOtp     EmailOtp?
   addresses    Address[]
   orders       Order[]
   wishlist     WishlistItem[]
@@ -78,6 +81,19 @@ model User {
   resetTokens  PasswordResetToken[]
 
   @@index([email])
+}
+
+/// One active email-verification code per user. The code itself is never stored,
+/// only an HMAC of it (keyed with AUTH_SECRET).
+model EmailOtp {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
 
 model PasswordResetToken {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { sendEmail, orderConfirmationEmailHtml } from "@/lib/email";
+import { sendOrderConfirmationEmail } from "@/lib/order-email";
 
 /**
  * Razorpay webhook endpoint. This is deliberately NOT behind session auth —
@@ -129,13 +129,5 @@ async function confirmPaymentByProviderOrderId(razorpayOrderId: string, razorpay
 
   if (!confirmed) return;
 
-  sendEmail({
-    to: payment.order.user.email,
-    subject: `Order confirmed — ${payment.order.orderNumber}`,
-    html: orderConfirmationEmailHtml({
-      name: payment.order.user.name,
-      orderNumber: payment.order.orderNumber,
-      total: payment.order.total,
-    }),
-  }).catch(() => {});
+  await sendOrderConfirmationEmail(payment.orderId);
 }
